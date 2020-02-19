@@ -2,3 +2,4 @@ data/
 vectors/
 .DS_Store
 report.tex
+coocvec-*

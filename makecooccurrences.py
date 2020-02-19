@@ -3,7 +3,7 @@ from collections import defaultdict
 import numpy as np
 
 # Location of corpus
-corpus = "reuters.rcv1.tokenized.gz"
+corpus = "vectors/reuters.rcv1.tokenized.gz"
 
 # Word frequencies
 freq = defaultdict(int)
@@ -22,7 +22,7 @@ with gzip.open(corpus, "rt", encoding='utf8', errors="ignore") as f:
 total = i
 
 # This maps the context words to integer (and vice versa)
-D = 500
+D = 1000
 topD = sorted(freq.items(), key=lambda p: p[1], reverse=True)[:D]
 topD_map = {}
 topD_map_reverse = {}
@@ -40,7 +40,7 @@ for i, word in enumerate(freq):
 
 # Now build term-context matrix
 M = np.zeros((len(freq), D))
-window = 3
+window = 2
 
 k = 0
 with gzip.open(corpus, "rt", encoding='utf-8', errors="ignore") as f:

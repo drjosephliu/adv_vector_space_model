@@ -1,7 +1,7 @@
 from pymagnitude import *
 from itertools import combinations
 from prettytable import PrettyTable
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, SpectralClustering
 import random
 
 
@@ -158,6 +158,7 @@ def cluster_with_sparse_representation(word_to_paraphrases_dict, word_to_k_dict)
     """
     # Note: any vector representation should be in the same directory as this file
     vectors = Magnitude("vectors/coocvec-500mostfreq-window-3.filter.magnitude")
+    # vectors = Magnitude("vectors/coocvec-500mostfreq-window-3.magnitude")
     clusterings = {}
 
     for target_word in word_to_paraphrases_dict.keys():
@@ -165,22 +166,19 @@ def cluster_with_sparse_representation(word_to_paraphrases_dict, word_to_k_dict)
         k = word_to_k_dict[target_word]
         # TODO: Implement
         clusterings[target_word] = [[] for i in range(k)]
-        sim_scores = [vectors.similarity(target_word, paraphrase) for paraphrase
-                      in paraphrase_list]
-        sim_scores = np.array(sim_scores)
-        sim_scores = sim_scores.reshape(-1, 1)
-        kmeans = KMeans(n_clusters=k).fit(sim_scores)
+        embedding = vectors.query(paraphrase_list)
+        kmeans = KMeans(n_clusters=k).fit(embedding)
         for i in range(len(kmeans.labels_)):
             cluster = kmeans.labels_[i]
             clusterings[target_word][cluster].append(paraphrase_list[i])
-            # print(f'{target_word}: {paraphrase_list[i]} = {kmeans.labels_[i]}')
-
-
+        for cluster in clusterings[target_word]:
+            if not cluster:
+                clusterings[target_word].remove(cluster)
     return clusterings
 
 word_to_paraphrases_dict, word_to_k_dict = load_input_file('data/test_input.txt')
 predicted_clusterings = cluster_with_sparse_representation(word_to_paraphrases_dict, word_to_k_dict)
-write_to_output_file('test_output_sparse2.txt', predicted_clusterings)
+write_to_output_file('test_output_sparse.txt', predicted_clusterings)
 
 # TASK 2.3
 def cluster_with_dense_representation(word_to_paraphrases_dict, word_to_k_dict):
