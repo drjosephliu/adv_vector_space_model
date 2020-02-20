@@ -1,7 +1,8 @@
 from pymagnitude import *
 from itertools import combinations
 from prettytable import PrettyTable
-from sklearn.cluster import KMeans, SpectralClustering
+from sklearn import preprocessing
+from sklearn.cluster import KMeans, SpectralClustering, DBSCAN, AgglomerativeClustering, MeanShift
 import random
 
 
@@ -158,27 +159,47 @@ def cluster_with_sparse_representation(word_to_paraphrases_dict, word_to_k_dict)
     """
     # Note: any vector representation should be in the same directory as this file
     vectors = Magnitude("vectors/coocvec-500mostfreq-window-3.filter.magnitude")
-    # vectors = Magnitude("vectors/coocvec-500mostfreq-window-3.magnitude")
+    # vectors = Magnitude("vectors/depDocNNSE2500sparse.txt")
+    # vectors2 = Magnitude("vectors/glove-lemmatized.6B.300d.magnitude")
+    # vectors = Magnitude("vectors/wiki-news-300d-1M.magnitude")
+    # vectors = Magnitude(vectors1, vectors3)
+    # vectors = Magnitude("vectors/coocvec-1000mostfreq-window-5.magnitude")
     clusterings = {}
 
     for target_word in word_to_paraphrases_dict.keys():
         paraphrase_list = word_to_paraphrases_dict[target_word]
         k = word_to_k_dict[target_word]
         # TODO: Implement
-        clusterings[target_word] = [[] for i in range(k)]
+        target_word_temp_lst = [[] for i in range(k)]
         embedding = vectors.query(paraphrase_list)
-        kmeans = KMeans(n_clusters=k).fit(embedding)
+        embedding = embedding.T
+        drops = np.random.choice(len(embedding), 35, replace=False)
+        embedding = np.delete(embedding, drops, axis=0)
+        embedding = embedding.T
+        scaler = preprocessing.StandardScaler()
+        embedding = scaler.fit_transform(embedding)
+        # kmeans = KMeans(n_clusters=k).fit(embedding)
+        # kmeans = AgglomerativeClustering(n_clusters=k, linkage='ward').fit(embedding)
+        # kmeans = DBSCAN(eps = .0000000001, min_samples = 20).fit(embedding)
+        kmeans = MeanShift().fit(embedding)
+        # target_word_temp_lst = [[] for i in range(len(list(set(kmeans.labels_))))]
+        print(kmeans.labels_)
         for i in range(len(kmeans.labels_)):
             cluster = kmeans.labels_[i]
-            clusterings[target_word][cluster].append(paraphrase_list[i])
-        for cluster in clusterings[target_word]:
-            if not cluster:
-                clusterings[target_word].remove(cluster)
+            target_word_temp_lst[cluster].append(paraphrase_list[i])
+        target_word_lst = [i for i in target_word_temp_lst if i != []]
+        clusterings[target_word] = target_word_lst
     return clusterings
 
-word_to_paraphrases_dict, word_to_k_dict = load_input_file('data/test_input.txt')
-predicted_clusterings = cluster_with_sparse_representation(word_to_paraphrases_dict, word_to_k_dict)
-write_to_output_file('test_output_sparse.txt', predicted_clusterings)
+# dev_word_to_paraphrases_dict, dev_word_to_k_dict = load_input_file('data/dev_input.txt')
+# dev_predicted_clusterings = cluster_with_sparse_representation(dev_word_to_paraphrases_dict, dev_word_to_k_dict)
+# dev_true_clusters = load_output_file('data/dev_output.txt')
+# evaluate_clusterings(dev_true_clusters, dev_predicted_clusterings)
+# write_to_output_file('dev_output_sparse.txt', dev_predicted_clusterings)
+
+# word_to_paraphrases_dict, word_to_k_dict = load_input_file('data/test_input.txt')
+# predicted_clusterings = cluster_with_sparse_representation(word_to_paraphrases_dict, word_to_k_dict)
+# write_to_output_file('test_output_sparse.txt', predicted_clusterings)
 
 # TASK 2.3
 def cluster_with_dense_representation(word_to_paraphrases_dict, word_to_k_dict):
@@ -190,24 +211,50 @@ def cluster_with_dense_representation(word_to_paraphrases_dict, word_to_k_dict):
     where each list corresponds to a cluster
     """
     # Note: any vector representation should be in the same directory as this file
-    vectors = Magnitude("GoogleNews-vectors-negative300.filter.magnitude")
+    # vectors = Magnitude("vectors/coocvec-500mostfreq-window-3.filter.magnitude")
+    # vectors = Magnitude("vectors/depDocNNSE2500sparse.txt")
+    # vectors2 = Magnitude("vectors/glove-lemmatized.6B.300d.magnitude")
+    # vectors2 = Magnitude("vectors/glove.twitter.27B.200d.magnitude")
+    vectors = Magnitude("vectors/wiki-news-300d-1M.magnitude")
+    # vectors1 = Magnitude("vectors/coocvec-1000mostfreq-window-5.magnitude")
+    # vectors = Magnitude(vectors1, vectors2)
     clusterings = {}
 
     for target_word in word_to_paraphrases_dict.keys():
         paraphrase_list = word_to_paraphrases_dict[target_word]
         k = word_to_k_dict[target_word]
         # TODO: Implement
-        clusterings[target_word] = [[] for i in range(k)]
-        sim_scores = [vectors.similarity(target_word, paraphrase) for paraphrase
-                      in paraphrase_list]
-        sim_scores = np.array(sim_scores)
-        sim_scores = sim_scores.reshape(-1, 1)
-        kmeans = KMeans(n_clusters=k).fit(sim_scores)
+        target_word_temp_lst = [[] for i in range(k)]
+        embedding = vectors.query(paraphrase_list)
+        embedding = embedding.T
+        drops = np.random.choice(len(embedding), 35, replace=False)
+        embedding = np.delete(embedding, drops, axis=0)
+        embedding = embedding.T
+        scaler = preprocessing.StandardScaler()
+        embedding = scaler.fit_transform(embedding)
+        # kmeans = KMeans(n_clusters=k).fit(embedding)
+        # kmeans = AgglomerativeClustering(n_clusters=k, linkage='ward').fit(embedding)
+        kmeans = DBSCAN(eps = 20, min_samples = 2).fit(embedding)
+        # kmeans = MeanShift().fit(embedding)
+        target_word_temp_lst = [[] for i in range(len(list(set(kmeans.labels_))))]
+        print(kmeans.labels_)
         for i in range(len(kmeans.labels_)):
             cluster = kmeans.labels_[i]
-            clusterings[target_word][cluster].append(paraphrase_list[i])
+            target_word_temp_lst[cluster].append(paraphrase_list[i])
+        target_word_lst = [i for i in target_word_temp_lst if i != []]
+        clusterings[target_word] = target_word_lst
     return clusterings
 
+
+dev_word_to_paraphrases_dict, dev_word_to_k_dict = load_input_file('data/dev_input.txt')
+dev_predicted_clusterings = cluster_with_dense_representation(dev_word_to_paraphrases_dict, dev_word_to_k_dict)
+dev_true_clusters = load_output_file('data/dev_output.txt')
+evaluate_clusterings(dev_true_clusters, dev_predicted_clusterings)
+write_to_output_file('dev_output_sparse.txt', dev_predicted_clusterings)
+
+word_to_paraphrases_dict, word_to_k_dict = load_input_file('data/test_input.txt')
+predicted_clusterings = cluster_with_dense_representation(word_to_paraphrases_dict, word_to_k_dict)
+write_to_output_file('test_output_dense.txt', predicted_clusterings)
 
 # TASK 2.4
 def cluster_with_no_k(word_to_paraphrases_dict):
@@ -218,12 +265,33 @@ def cluster_with_no_k(word_to_paraphrases_dict):
     where each list corresponds to a cluster
     """
     # Note: any vector representation should be in the same directory as this file
-    vectors = Magnitude("GoogleNews-vectors-negative300.filter.magnitude")
-    clusterings = {}
+    # vectors = Magnitude("vectors/coocvec-500mostfreq-window-3.filter.magnitude")
+    # vectors = Magnitude("vectors/depDocNNSE2500sparse.txt")
+    # vectors2 = Magnitude("vectors/glove-lemmatized.6B.300d.magnitude")
+    vectors1 = Magnitude("vectors/wiki-news-300d-1M.magnitude")
+    # vectors2 = Magnitude("vectors/GoogleNews-vectors-negative300.filter.magnitude")
+    # vectors = Magnitude("vectors/glove.840B.300d.magnitude")
+    vectors2 = Magnitude("vectors/glove.twitter.27B.200d.magnitude")
+    vectors = Magnitude(vectors1, vectors2)
 
+    clusterings = {}
     for target_word in word_to_paraphrases_dict.keys():
         paraphrase_list = word_to_paraphrases_dict[target_word]
-        # TODO: Implement
-        clusterings[target_word] = None
-
+        k=6
+        if (len(paraphrase_list)<k):
+            k=len(paraphrase_list)
+        target_word_temp_lst = [[] for i in range(k)]
+        embedding = vectors.query(paraphrase_list)
+        scaler = preprocessing.StandardScaler()
+        embedding = scaler.fit_transform(embedding)
+        kmeans = KMeans(n_clusters=k).fit(embedding)
+        for i in range(len(kmeans.labels_)):
+            cluster = kmeans.labels_[i]
+            target_word_temp_lst[cluster].append(paraphrase_list[i])
+        target_word_lst = [i for i in target_word_temp_lst if i != []]
+        clusterings[target_word] = target_word_lst
     return clusterings
+
+word_to_paraphrases_dict, word_to_k_dict = load_input_file('data/test_nok_input.txt')
+predicted_clusterings = cluster_with_no_k(word_to_paraphrases_dict)
+write_to_output_file('test_output_nok.txt', predicted_clusterings)
